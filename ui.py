@@ -63,7 +63,7 @@ class ColorButton(QPushButton):
             self.update()
 
 
-class CtrlEditor(DockableWidget):
+class ControllerEditor(DockableWidget):
 
     def __init__(self):
         super().__init__()
@@ -72,10 +72,10 @@ class CtrlEditor(DockableWidget):
         self.default_shapes_data = dict()
 
         self.prefs_location = cmds.internalVar(userPrefDir=True)
-        self.tool_prefs_location = os.path.join(self.prefs_location, 'ctrl_editor')
+        self.tool_prefs_location = os.path.join(self.prefs_location, 'controller_editor')
         self.shapes_file = os.path.join(self.tool_prefs_location, 'shapes.json')
 
-        self.setWindowTitle('Ctrl Editor')
+        self.setWindowTitle('Controller Editor')
 
         # color
         colors_layout = QGridLayout()
@@ -228,5 +228,5 @@ class CtrlEditor(DockableWidget):
         self.reload_shapes_tab()
 
 
-def open_ctrl_editor():
-    CtrlEditor.open_in_workspace()
+def open_controller_editor():
+    ControllerEditor.open_in_workspace()
