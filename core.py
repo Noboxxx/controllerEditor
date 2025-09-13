@@ -61,6 +61,41 @@ def create_controller(name, with_joint=True):
 
     cmds.select(bfr)
 
+
+@chunk
+def transform_shapes(ctrl, rotation=None, scale=None):
+    held_selection = cmds.ls(sl=True)
+    ctrl_shapes = cmds.listRelatives(ctrl, shapes=True, type='nurbsCurve') or list()
+
+    for ctrl_shape in ctrl_shapes:
+        ctrl_cv_plug = f'{ctrl_shape}.cv[*]'
+        cmds.select(ctrl_cv_plug)
+
+        if rotation:
+            cmds.rotate(
+                *rotation,
+                relative=True,
+                objectCenterPivot=True,
+                objectSpace=True,
+            )
+
+        if scale:
+            cmds.scale(
+                *scale,
+                relative=True,
+                objectCenterPivot=True,
+                objectSpace=True,
+            )
+
+    cmds.select(held_selection)
+
+@chunk
+def transform_selected_shapes(rotation=None, scale=None):
+    selection = cmds.ls(sl=True, type='transform')
+
+    for transform in selection:
+        transform_shapes(transform, rotation, scale)
+
 @chunk
 def replace_shapes_on_selected():
     selection = cmds.ls(sl=True, type='transform')
@@ -84,6 +119,23 @@ def set_color_on_selected(color_index):
 
     for node in selection:
         set_color(node, color_index)
+
+@chunk
+def select_color(color_index):
+    curves = cmds.ls(type='nurbsCurve')
+
+    override_ = color_index is not None
+
+    to_select = list()
+    for curve in curves:
+        curve_override = cmds.getAttr(f'{curve}.overrideEnabled')
+        curve_color_index = cmds.getAttr(f'{curve}.overrideColor')
+
+        if curve_override == override_ and curve_color_index == color_index:
+            transform, = cmds.listRelatives(curve, parent=True)
+            to_select.append(transform)
+
+    cmds.select(to_select)
 
 @chunk
 def set_color(node, color_index):

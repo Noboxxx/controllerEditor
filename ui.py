@@ -1,5 +1,4 @@
 import json
-from multiprocessing.reduction import duplicate
 
 try:
     from PySide2.QtCore import *
@@ -16,7 +15,7 @@ from maya import cmds
 
 from .utils import DockableWidget
 from .core import create_controller, set_color_on_selected, get_shapes_data_on_selected, set_shapes_data_on_selected, \
-    replace_shapes_on_selected
+    replace_shapes_on_selected, transform_shapes, transform_selected_shapes, select_color
 
 __folder__ = os.path.dirname(__file__)
 
@@ -48,6 +47,16 @@ class ColorButton(QPushButton):
         self.clicked.connect(set_color_on_selected_func)
 
         self.reload()
+
+    def contextMenuEvent(self, event, /):
+        menu = QMenu(self)
+
+        select_action = QAction("Select", self)
+        menu.addAction(select_action)
+
+        select_action.triggered.connect(lambda: select_color(self.color_index))
+
+        menu.exec_(event.globalPos())
 
     def reload(self):
         if self.color_index is None:
@@ -143,6 +152,28 @@ class ControllerEditor(DockableWidget):
         self.paste_btn = QPushButton('paste')
         self.paste_btn.clicked.connect(past_func)
 
+        scale_up_btn = QPushButton('scale up')
+        scale_up_btn.clicked.connect(lambda: transform_selected_shapes(scale=(1.2, 1.2, 1.2)))
+
+        scale_down_btn = QPushButton('scale down')
+        scale_down_btn.clicked.connect(lambda: transform_selected_shapes(scale=(.8, .8, .8)))
+
+        rotate_x_btn = QPushButton('rotate X')
+        rotate_x_btn.clicked.connect(lambda: transform_selected_shapes(rotation=(45, 0, 0)))
+
+        rotate_y_btn = QPushButton('rotate Y')
+        rotate_y_btn.clicked.connect(lambda: transform_selected_shapes(rotation=(0, 45, 0)))
+
+        rotate_z_btn = QPushButton('rotate Z')
+        rotate_z_btn.clicked.connect(lambda: transform_selected_shapes(rotation=(0, 0, 45)))
+
+        transform_layout = QGridLayout()
+        transform_layout.addWidget(scale_up_btn, 0, 0)
+        transform_layout.addWidget(scale_down_btn, 0, 1)
+        transform_layout.addWidget(rotate_x_btn, 1, 0)
+        transform_layout.addWidget(rotate_y_btn, 1, 1)
+        transform_layout.addWidget(rotate_z_btn, 1, 2)
+
         replace_btn = QPushButton('replace')
         replace_btn.clicked.connect(replace_shapes_on_selected)
 
@@ -166,6 +197,8 @@ class ControllerEditor(DockableWidget):
 
         shape_layout = QVBoxLayout()
         shape_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        shape_layout.addWidget(QLabel('Transform'))
+        shape_layout.addLayout(transform_layout)
         shape_layout.addWidget(QLabel('Copy'))
         shape_layout.addLayout(copy_paste_layout)
         shape_layout.addWidget(QLabel('Replace'))
