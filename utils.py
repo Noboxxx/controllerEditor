@@ -15,6 +15,32 @@ import string
 import inspect
 from maya import OpenMayaUI, cmds
 
+def hold_selection(func):
+    def wrapper(*args, **kwargs):
+        with HoldSelection():
+            return func(*args, **kwargs)
+
+    return wrapper
+
+class HoldSelection(object):
+
+    def __init__(self):
+        self.selection = list()
+
+    def __enter__(self):
+        self.selection = cmds.ls(sl=True, long=True)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        selection = [x for x in self.selection if cmds.objExists(x)]
+        cmds.select(selection)
+
+def chunk(func):
+    def wrapper(*args, **kwargs):
+        with Chunk(name=func.__name__):
+            return func(*args, **kwargs)
+
+    return wrapper
+
 class Chunk(object):
 
     def __init__(self, name='untitled'):

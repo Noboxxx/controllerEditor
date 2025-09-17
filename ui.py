@@ -74,6 +74,30 @@ class ColorButton(QPushButton):
             self.update()
 
 
+class NameLine(QLineEdit):
+
+
+    def contextMenuEvent(self, event):
+        paste_selected_action = QAction('Paste Selected', self)
+        paste_selected_action.triggered.connect(self.paste_selected)
+
+        menu = self.createStandardContextMenu()
+        menu.addSeparator()
+        menu.addAction(paste_selected_action)
+
+        menu.exec_(event.globalPos())
+
+    def paste_selected(self):
+        selection = cmds.ls(sl=True)
+
+        if not selection:
+            raise Exception('Nothing currently selected')
+
+        text = selection[0]
+        text = text.split('|')[-1]
+        self.setText(text)
+
+
 class ControllerEditor(DockableWidget):
 
     def __init__(self):
@@ -118,15 +142,30 @@ class ControllerEditor(DockableWidget):
         color_layout.addWidget(reset_color_btn)
         color_layout.addLayout(colors_layout)
 
-        self.name_line = QLineEdit()
+        self.name_line = NameLine()
         self.name_line.setPlaceholderText('default')
 
         self.with_joint_check = QCheckBox()
+        self.with_joint_check.setChecked(True)
 
-        create_controller_func = lambda x: create_controller(
-            self.name_line.text(),
-            self.with_joint_check.isChecked()
-        )
+        def create_controller_func():
+            lock_attrs = list()
+            for attribute_, attribute_data_ in self.attributes_checks.items():
+                if isinstance(attribute_data_, QCheckBox):
+                    state = attribute_data_.isChecked()
+                    if not state:
+                        lock_attrs.append(attribute_)
+                else:
+                    for axis_, checkbox in attribute_data_.items():
+                        state = checkbox.isChecked()
+                        if not state:
+                            full_attribute = f'{attribute_}{axis_.title()}'
+                            lock_attrs.append(full_attribute)
+
+            name = self.name_line.text() or self.name_line.placeholderText()
+            with_joint = self.with_joint_check.isChecked()
+
+            create_controller(name, with_joint, lock_attrs)
 
         create_btn = QPushButton('Create')
         create_btn.clicked.connect(create_controller_func)
@@ -135,8 +174,66 @@ class ControllerEditor(DockableWidget):
         ctrl_layout.addRow('name', self.name_line)
         ctrl_layout.addRow('with joint', self.with_joint_check)
 
+        attributes_layout = QVBoxLayout()
+        attributes_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        attributes_layout.addWidget(QLabel('Attributes'))
+
+        self.attributes_checks = dict()
+
+        attributes = {
+            'translate': {
+                'default': True,
+                'vector': True
+            },
+            'rotate': {
+                'default': True,
+                'vector': True
+            },
+            'scale': {
+                'default': True,
+                'vector': True
+            },
+            'visibility': {
+                'default': False,
+                'vector': False
+            },
+        }
+
+        for attribute, attribute_data in attributes.items():
+            self.attributes_checks[attribute] = dict()
+
+            attribute_layout = QHBoxLayout()
+            attribute_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+
+            attribute_label = QLabel(attribute)
+            attribute_label.setMinimumWidth(100)
+            attribute_layout.addWidget(attribute_label)
+
+            vector = attribute_data.get('vector', False)
+            default = attribute_data.get('default', False)
+
+            if vector:
+                for axis in ('x', 'y', 'z'):
+                    attr_check = QCheckBox(axis)
+                    attr_check.setChecked(default)
+
+                    self.attributes_checks[attribute][axis] = attr_check
+
+                    attribute_layout.addWidget(attr_check)
+            else:
+                attr_check = QCheckBox()
+                attr_check.setChecked(default)
+
+                self.attributes_checks[attribute] = attr_check
+
+                attribute_layout.addWidget(attr_check)
+            attributes_layout.addLayout(attribute_layout)
+
         main_ctrl_layout = QVBoxLayout()
         main_ctrl_layout.addLayout(ctrl_layout)
+        main_ctrl_layout.addSpacing(50)
+        main_ctrl_layout.addLayout(attributes_layout)
+        main_ctrl_layout.addStretch()
         main_ctrl_layout.addWidget(create_btn, alignment=Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignRight)
 
         # shape

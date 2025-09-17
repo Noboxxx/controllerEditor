@@ -1,9 +1,10 @@
 from maya import cmds
 
-from .utils import chunk
+from .utils import chunk, hold_selection
+
 
 @chunk
-def create_controller(name, with_joint=True):
+def create_controller(name, with_joint=True, lock_attrs=None):
 
     if not name:
         name = 'default'
@@ -19,26 +20,28 @@ def create_controller(name, with_joint=True):
         raise Exception(f'Bfr name {bfr_name!r} already exists')
 
     # selection
-    selection = cmds.ls(sl=True)
+    selection = cmds.ls(sl=True, long=True)
 
     # gizmo
     active_context = cmds.currentCtx()
-    active_context = active_context.replace('SuperContext', '')
-    active_context = active_context.title()
+    if active_context == 'RotateSuperContext':
+        position = cmds.manipRotateContext('Rotate', position=True, q=True)
+    elif active_context == 'moveSuperContext':
+        position = cmds.manipMoveContext('Move', position=True, q=True)
+    elif active_context == 'scaleSuperContext':
+        position = cmds.manipScaleContext('Scale', position=True, q=True)
+    else:
+        cmds.warning(f'Unable to find position for context {active_context!r}')
+        position = None
 
-    try:
-        position = cmds.manipMoveContext(active_context, q=True, p=True)
-    except Exception as e:
-        cmds.warning(e)
+    if not position:
         position = 0, 0, 0
-
-    print(active_context, position)
 
     # ctrl
     bfr = cmds.group(world=True, empty=True, name=bfr_name)
-    ctl = cmds.circle(constructionHistory=False, name=ctl_name, normal=(1, 0, 0))
+    ctl, = cmds.circle(constructionHistory=False, name=ctl_name, normal=(1, 0, 0))
 
-    ctl_shape, = cmds.listRelatives(ctl, shapes=True, type='nurbsCurve')
+    ctl_shape, = cmds.listRelatives(ctl, shapes=True, type='nurbsCurve', fullPath=True)
     cmds.setAttr(f'{ctl_shape}.overrideEnabled', True)
     cmds.setAttr(f'{ctl_shape}.overrideColor', 17)
 
@@ -59,13 +62,19 @@ def create_controller(name, with_joint=True):
         else:
             cmds.matchTransform(bfr, reference, position=True, rotation=True, scale=False)
 
+    # lock attrs
+    if lock_attrs:
+        for attr in lock_attrs:
+            plug = f'{ctl}.{attr}'
+            cmds.setAttr(plug, lock=True, keyable=False)
+
     cmds.select(bfr)
 
 
 @chunk
+@hold_selection
 def transform_shapes(ctrl, rotation=None, scale=None):
-    held_selection = cmds.ls(sl=True)
-    ctrl_shapes = cmds.listRelatives(ctrl, shapes=True, type='nurbsCurve') or list()
+    ctrl_shapes = cmds.listRelatives(ctrl, shapes=True, type='nurbsCurve', fullPath=True) or list()
 
     for ctrl_shape in ctrl_shapes:
         ctrl_cv_plug = f'{ctrl_shape}.cv[*]'
@@ -87,18 +96,16 @@ def transform_shapes(ctrl, rotation=None, scale=None):
                 objectSpace=True,
             )
 
-    cmds.select(held_selection)
-
 @chunk
 def transform_selected_shapes(rotation=None, scale=None):
-    selection = cmds.ls(sl=True, type='transform')
+    selection = cmds.ls(sl=True, type='transform', long=True)
 
     for transform in selection:
         transform_shapes(transform, rotation, scale)
 
 @chunk
 def replace_shapes_on_selected():
-    selection = cmds.ls(sl=True, type='transform')
+    selection = cmds.ls(sl=True, type='transform', long=True)
 
     if len(selection) < 2:
         raise Exception(f'Selection ust contain at least two controllers. Got {len(selection)}')
@@ -112,7 +119,7 @@ def replace_shapes_on_selected():
 
 @chunk
 def set_color_on_selected(color_index):
-    selection = cmds.ls(sl=True)
+    selection = cmds.ls(sl=True, long=True)
 
     if not selection:
         return
@@ -122,7 +129,7 @@ def set_color_on_selected(color_index):
 
 @chunk
 def select_color(color_index):
-    curves = cmds.ls(type='nurbsCurve')
+    curves = cmds.ls(type='nurbsCurve', long=True)
 
     override_ = color_index is not None
 
@@ -132,7 +139,7 @@ def select_color(color_index):
         curve_color_index = cmds.getAttr(f'{curve}.overrideColor')
 
         if curve_override == override_ and curve_color_index == color_index:
-            transform, = cmds.listRelatives(curve, parent=True)
+            transform, = cmds.listRelatives(curve, parent=True, fullPath=True)
             to_select.append(transform)
 
     cmds.select(to_select)
@@ -142,7 +149,7 @@ def set_color(node, color_index):
     if cmds.objectType(node, isAType='nurbsCurve'):
         shapes = [node]
     else:
-        shapes = cmds.listRelatives(node, shapes=True, type='nurbsCurve')
+        shapes = cmds.listRelatives(node, shapes=True, type='nurbsCurve', fullPath=True)
 
     if not shapes:
         cmds.warning(f'No shape of type \'nurbsCurve\' found for node {node!r}')
@@ -157,10 +164,9 @@ def set_color(node, color_index):
             cmds.setAttr(f'{shape}.overrideColor', color_index)
 
 @chunk
+@hold_selection
 def get_shapes_data(transform):
-    held_selection = cmds.ls(sl=True)
-
-    shapes = cmds.listRelatives(transform, shapes=True, type='nurbsCurve')
+    shapes = cmds.listRelatives(transform, shapes=True, type='nurbsCurve', fullPath=True)
 
     if not shapes:
         raise Exception('No shapes found to be saved')
@@ -189,12 +195,11 @@ def get_shapes_data(transform):
 
         all_data.append(data)
 
-    cmds.select(held_selection  )
     return all_data
 
 @chunk
 def get_shapes_data_on_selected():
-    selection = cmds.ls(sl=True, type='transform')
+    selection = cmds.ls(sl=True, type='transform', long=True)
 
     if not selection:
         raise Exception('No transform selected')
@@ -204,7 +209,7 @@ def get_shapes_data_on_selected():
 
 @chunk
 def set_shapes_data_on_selected(shapes_data):
-    selection = cmds.ls(sl=True, type='transform')
+    selection = cmds.ls(sl=True, type='transform', long=True)
 
     for transform in selection:
         set_shapes_data(transform, shapes_data)
@@ -212,9 +217,8 @@ def set_shapes_data_on_selected(shapes_data):
     cmds.select(selection)
 
 @chunk
+@hold_selection
 def set_shapes_data(ctrl, shapes_data):
-    held_selection = cmds.ls(sl=True)
-
     # create
     new_curves = list()
     for shape_data in shapes_data:
@@ -236,7 +240,7 @@ def set_shapes_data(ctrl, shapes_data):
         new_curves.append(curve)
 
     # remove
-    old_shapes = cmds.listRelatives(ctrl, shapes=True, type='nurbsCurve')
+    old_shapes = cmds.listRelatives(ctrl, shapes=True, type='nurbsCurve', fullPath=True)
     old_colors = list()
     if old_shapes:
         for old_shape in old_shapes:
@@ -250,9 +254,10 @@ def set_shapes_data(ctrl, shapes_data):
 
     # replace
     for index, new_curve in enumerate(new_curves):
-        new_shape, = cmds.listRelatives(new_curve, shapes=True, type='nurbsCurve')
+        new_shape, = cmds.listRelatives(new_curve, shapes=True, type='nurbsCurve', fullPath=True)
 
-        new_shape_name = f'{ctrl}Shape'
+        ctrl_name = ctrl.split('|')[-1]
+        new_shape_name = f'{ctrl_name}Shape'
         if index > 0:
             new_shape_name = f'{new_shape_name}{index}'
 
@@ -265,5 +270,3 @@ def set_shapes_data(ctrl, shapes_data):
         cmds.parent(new_shape, ctrl, relative=True, shape=True)
 
         cmds.delete(new_curve)
-
-    cmds.select(held_selection)
