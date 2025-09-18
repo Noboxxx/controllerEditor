@@ -70,7 +70,6 @@ def create_controller(name, with_joint=True, lock_attrs=None):
 
     cmds.select(bfr)
 
-
 @chunk
 @hold_selection
 def transform_shapes(ctrl, rotation=None, scale=None):
