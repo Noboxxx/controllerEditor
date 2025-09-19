@@ -15,7 +15,9 @@ from maya import cmds
 
 from .utils import DockableWidget
 from .core import create_controller, set_color_on_selected, get_shapes_data_on_selected, set_shapes_data_on_selected, \
-    replace_shapes_on_selected, transform_shapes, transform_selected_shapes, select_color
+    replace_shapes_on_selected, select_all_ctrls, transform_selected_shapes, select_color, reset_all_ctrls, \
+    reset_selected_transforms, duplicate_mirror_selected_transforms, select_mirror, add_mirror, \
+    mirror_posing_on_selected
 
 __folder__ = os.path.dirname(__file__)
 
@@ -104,6 +106,7 @@ class ControllerEditor(DockableWidget):
         super().__init__()
 
         self.copied_shapes = None
+        self.ctrl_suffix = '_ctl'
 
         self.default_shapes_file = os.path.join(__folder__, 'default_shapes.json')
         self.default_shapes_data = dict()
@@ -165,18 +168,14 @@ class ControllerEditor(DockableWidget):
             name = self.name_line.text() or self.name_line.placeholderText()
             with_joint = self.with_joint_check.isChecked()
 
-            create_controller(name, with_joint, lock_attrs)
+            create_controller(name, with_joint, lock_attrs, self.ctrl_suffix)
 
         create_btn = QPushButton('Create')
         create_btn.clicked.connect(create_controller_func)
 
-        ctrl_layout = QFormLayout()
-        ctrl_layout.addRow('name', self.name_line)
-        ctrl_layout.addRow('with joint', self.with_joint_check)
-
-        attributes_layout = QVBoxLayout()
-        attributes_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        attributes_layout.addWidget(QLabel('Attributes'))
+        create_ctrl_params_layout = QFormLayout()
+        create_ctrl_params_layout.addRow('name', self.name_line)
+        create_ctrl_params_layout.addRow('with joint', self.with_joint_check)
 
         self.attributes_checks = dict()
 
@@ -203,11 +202,8 @@ class ControllerEditor(DockableWidget):
             self.attributes_checks[attribute] = dict()
 
             attribute_layout = QHBoxLayout()
+            attribute_layout.setContentsMargins(QMargins(0, 0, 0, 0))
             attribute_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-
-            attribute_label = QLabel(attribute)
-            attribute_label.setMinimumWidth(100)
-            attribute_layout.addWidget(attribute_label)
 
             vector = attribute_data.get('vector', False)
             default = attribute_data.get('default', False)
@@ -227,14 +223,68 @@ class ControllerEditor(DockableWidget):
                 self.attributes_checks[attribute] = attr_check
 
                 attribute_layout.addWidget(attr_check)
-            attributes_layout.addLayout(attribute_layout)
 
-        main_ctrl_layout = QVBoxLayout()
-        main_ctrl_layout.addLayout(ctrl_layout)
-        main_ctrl_layout.addSpacing(50)
-        main_ctrl_layout.addLayout(attributes_layout)
-        main_ctrl_layout.addStretch()
-        main_ctrl_layout.addWidget(create_btn, alignment=Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignRight)
+            w = QWidget()
+            w.setLayout(attribute_layout)
+            create_ctrl_params_layout.addRow(attribute, w)
+
+        create_ctrl_layout = QVBoxLayout()
+        create_ctrl_layout.addLayout(create_ctrl_params_layout)
+        create_ctrl_layout.addWidget(create_btn, alignment=Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignRight)
+
+        select_all_ctrls_btn = QPushButton('Select All Ctrls')
+        select_all_ctrls_btn.setIcon(QIcon(':aselect.png'))
+        def select_all_ctrls_func():
+            select_all_ctrls(self.ctrl_suffix)
+        select_all_ctrls_btn.clicked.connect(select_all_ctrls_func)
+
+        select_mirror_btn = QPushButton('Select Mirror')
+        select_mirror_btn.setIcon(QIcon(':aselect.png'))
+        select_mirror_btn.clicked.connect(select_mirror)
+
+        add_mirror_btn = QPushButton('Add Mirror')
+        add_mirror_btn.setIcon(QIcon(':aselect.png'))
+        add_mirror_btn.clicked.connect(add_mirror)
+
+        reset_all_ctrls_btn = QPushButton('Reset All Ctrls')
+        reset_all_ctrls_btn.setIcon(QIcon(':clockwise.png'))
+        def reset_all_ctrls_func():
+            reset_all_ctrls(self.ctrl_suffix)
+        reset_all_ctrls_btn.clicked.connect(reset_all_ctrls_func)
+
+        reset_selected_btn = QPushButton('Reset Selected')
+        reset_selected_btn.setIcon(QIcon(':clockwise.png'))
+        reset_selected_btn.clicked.connect(reset_selected_transforms)
+
+        duplicate_mirror_btn = QPushButton('Duplicate Mirror')
+        duplicate_mirror_btn.setIcon(QIcon(':polyMirrorGeometry.png'))
+        duplicate_mirror_btn.clicked.connect(duplicate_mirror_selected_transforms)
+
+        mirror_posing_btn = QPushButton('Mirror Posing')
+        mirror_posing_btn.setIcon(QIcon(':polyMirrorGeometry.png'))
+        mirror_posing_btn.clicked.connect(mirror_posing_on_selected)
+
+        utils_layout = QGridLayout()
+        utils_layout.addWidget(reset_selected_btn, 0, 0)
+        utils_layout.addWidget(reset_all_ctrls_btn, 0, 1)
+        utils_layout.addWidget(duplicate_mirror_btn, 1, 0)
+        utils_layout.addWidget(mirror_posing_btn, 1, 1)
+        utils_layout.addWidget(select_all_ctrls_btn, 2, 0)
+        utils_layout.addWidget(select_mirror_btn, 3, 0)
+        utils_layout.addWidget(add_mirror_btn, 3, 1)
+
+        create_label = QLabel('Create')
+        create_label.setStyleSheet('font-weight: bold;')
+
+        utils_label = QLabel('Utils')
+        utils_label.setStyleSheet('font-weight: bold;')
+
+        ctrl_layout = QVBoxLayout()
+        ctrl_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        ctrl_layout.addWidget(utils_label)
+        ctrl_layout.addLayout(utils_layout)
+        ctrl_layout.addWidget(create_label)
+        ctrl_layout.addLayout(create_ctrl_layout)
 
         # shape
         def copy_func():
@@ -304,7 +354,7 @@ class ControllerEditor(DockableWidget):
 
         # tabs
         tabs = {
-            'ctrl': main_ctrl_layout,
+            'ctrl': ctrl_layout,
             'color': color_layout,
             'shape': shape_layout
         }

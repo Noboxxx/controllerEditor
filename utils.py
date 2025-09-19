@@ -14,6 +14,7 @@ import string
 
 import inspect
 from maya import OpenMayaUI, cmds
+from maya.api import OpenMaya
 
 def hold_selection(func):
     def wrapper(*args, **kwargs):
@@ -124,3 +125,30 @@ class DockableWidget(QWidget):
         OpenMayaUI.MQtUtil.addWidgetToMayaLayout(int(widget_pointer), int(workspace_control))
 
         return widget
+
+def get_mirror_name(name):
+    if '_L' in name:
+        side = '_L'
+        mirror_side = '_R'
+    elif '_R' in name:
+        side = '_R'
+        mirror_side = '_L'
+    else:
+        return None
+
+    mirror_name = name.replace(side, mirror_side)
+    return mirror_name
+
+def get_mirror_matrix(matrix):
+    matrix = OpenMaya.MMatrix(matrix)
+
+    scaled_matrix = (
+        -1.0, 0.0, 0.0, 0.0,
+        0.0, 1.0, 0.0, 0.0,
+        0.0, 0.0, 1.0, 0.0,
+        0.0, 0.0, 0.0, 1.0
+    )
+    scaled_matrix = OpenMaya.MMatrix(scaled_matrix)
+
+    mirror_matrix = matrix * scaled_matrix
+    return mirror_matrix

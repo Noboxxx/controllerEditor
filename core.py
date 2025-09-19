@@ -1,15 +1,16 @@
 from maya import cmds
+from maya.api import OpenMaya
 
-from .utils import chunk, hold_selection
+from .utils import chunk, hold_selection, get_mirror_name, get_mirror_matrix
 
 
 @chunk
-def create_controller(name, with_joint=True, lock_attrs=None):
+def create_controller(name, with_joint=True, lock_attrs=None, suffix='_ctl'):
 
     if not name:
         name = 'default'
 
-    ctl_name = f'{name}_ctl'
+    ctl_name = f'{name}{suffix}'
 
     if cmds.objExists(ctl_name):
         raise Exception(f'Ctl name {ctl_name!r} already exists')
@@ -269,3 +270,150 @@ def set_shapes_data(ctrl, shapes_data):
         cmds.parent(new_shape, ctrl, relative=True, shape=True)
 
         cmds.delete(new_curve)
+
+
+def get_all_ctrls(suffix):
+    ctrls = list()
+
+    for transform in cmds.ls(type='transform'):
+        if not transform.endswith(suffix):
+            continue
+
+        shapes = cmds.listRelatives(transform, shapes=True, type='nurbsCurve')
+
+        if not shapes:
+            continue
+
+        ctrls.append(transform)
+
+    return ctrls
+
+
+@chunk
+def select_all_ctrls(suffix):
+    cmds.select(get_all_ctrls(suffix))
+
+@chunk
+def reset_all_ctrls(suffix):
+    ctrls = get_all_ctrls(suffix)
+
+    for ctrl in ctrls:
+        reset_transform(ctrl)
+
+@chunk
+def reset_selected_transforms():
+    selection = cmds.ls(sl=True, type='transform')
+
+    for transform in selection:
+        reset_transform(transform)
+
+@chunk
+def reset_transform(transform):
+    user_attrs = cmds.listAttr(transform, userDefined=True) or list()
+    trs_attrs = [
+        'tx', 'ty', 'tz',
+        'rx', 'ry', 'rz',
+        'sx', 'sy', 'sz',
+    ]
+
+    for attr in trs_attrs + user_attrs:
+        plug = f'{transform}.{attr}'
+
+        # default value
+        default_values = cmds.attributeQuery(attr, node=transform, listDefault=True)
+
+        if default_values is None:
+            continue
+
+        # set attr
+        try:
+            cmds.setAttr(plug, *default_values)
+        except Exception as e:
+            cmds.warning(e)
+
+@chunk
+def duplicate_mirror_transform(transform):
+    # side
+    if '_L' in transform:
+        source_side = '_L'
+        destination_side = '_R'
+    elif '_R' in transform:
+        source_side = '_R'
+        destination_side = '_L'
+    else:
+        source_side = None
+        destination_side = None
+
+    if not source_side:
+        raise Exception(f'Transform {transform!r} is not sided transform')
+
+    # matrix
+    transform_matrix = cmds.xform(transform, q=True, matrix=True, worldSpace=True)
+    mirror_matrix = get_mirror_matrix(transform_matrix)
+
+    # mirror
+    transform_copies = cmds.duplicate(transform, renameChildren=True)
+    cmds.xform(transform_copies[0], matrix=mirror_matrix, worldSpace=True)
+
+    # rename
+    for trs in transform_copies:
+        trs_new_name = trs.replace(source_side, destination_side)[:-1]
+        cmds.rename(trs, trs_new_name)
+
+@chunk
+def duplicate_mirror_selected_transforms():
+    selection = cmds.ls(sl=True, type='transform')
+
+    for transform in selection:
+        duplicate_mirror_transform(transform)
+
+@chunk
+def select_mirror():
+    selection = cmds.ls(sl=True)
+
+    mirror_selection = list()
+    for item in selection:
+        mirror_item = get_mirror_name(item) or item
+
+        if not cmds.objExists(mirror_item):
+            continue
+
+        mirror_selection.append(mirror_item)
+
+    cmds.select(mirror_selection)
+
+@chunk
+def add_mirror():
+    selection = cmds.ls(sl=True)
+
+    mirror_selection = list()
+    for item in selection:
+        mirror_item = get_mirror_name(item)
+
+        if mirror_item is None or not cmds.objExists(mirror_item):
+            continue
+
+        mirror_selection.append(mirror_item)
+
+    cmds.select(mirror_selection, add=True)
+
+@chunk
+def mirror_posing(transform):
+    # side
+    mirror_transform = get_mirror_name(transform)
+
+    if mirror_transform is None or not cmds.objExists(mirror_transform):
+        raise Exception(f'Transform {transform!r} has no mirror')
+
+    # matrix
+    matrix = cmds.xform(transform, q=True, matrix=True, worldSpace=True)
+    mirror_matrix = get_mirror_matrix(matrix)
+
+    cmds.xform(mirror_transform, matrix=mirror_matrix, worldSpace=True)
+
+@chunk
+def mirror_posing_on_selected():
+    selection = cmds.ls(sl=True, type='transform')
+
+    for transform in selection:
+        mirror_posing(transform)
