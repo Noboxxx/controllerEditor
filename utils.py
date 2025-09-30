@@ -53,13 +53,6 @@ class Chunk(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         cmds.undoInfo(closeChunk=True)
 
-def chunk(func):
-    def wrapper(*args, **kwargs):
-        with Chunk(name=func.__name__):
-            return func(*args, **kwargs)
-
-    return wrapper
-
 def get_maya_main_window():
     pointer = OpenMayaUI.MQtUtil.mainWindow()
     return wrapInstance(int(pointer), QMainWindow)
