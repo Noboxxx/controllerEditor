@@ -6,7 +6,6 @@ from .utils import chunk, hold_selection, get_mirror_name, get_mirror_matrix
 
 @chunk
 def create_controller(name, with_joint=True, lock_attrs=None, suffix='_ctl'):
-
     if not name:
         name = 'default'
 
@@ -71,6 +70,7 @@ def create_controller(name, with_joint=True, lock_attrs=None, suffix='_ctl'):
 
     cmds.select(bfr)
 
+
 @chunk
 @hold_selection
 def transform_shapes(ctrl, rotation=None, scale=None):
@@ -96,12 +96,14 @@ def transform_shapes(ctrl, rotation=None, scale=None):
                 objectSpace=True,
             )
 
+
 @chunk
 def transform_selected_shapes(rotation=None, scale=None):
     selection = cmds.ls(sl=True, type='transform', long=True)
 
     for transform in selection:
         transform_shapes(transform, rotation, scale)
+
 
 @chunk
 def replace_shapes_on_selected():
@@ -117,6 +119,7 @@ def replace_shapes_on_selected():
     for destination in destinations:
         set_shapes_data(destination, shapes_data)
 
+
 @chunk
 def set_color_on_selected(color_index):
     selection = cmds.ls(sl=True, long=True)
@@ -126,6 +129,7 @@ def set_color_on_selected(color_index):
 
     for node in selection:
         set_color(node, color_index)
+
 
 @chunk
 def select_color(color_index):
@@ -143,6 +147,7 @@ def select_color(color_index):
             to_select.append(transform)
 
     cmds.select(to_select)
+
 
 @chunk
 def set_color(node, color_index):
@@ -162,6 +167,7 @@ def set_color(node, color_index):
         else:
             cmds.setAttr(f'{shape}.overrideEnabled', True)
             cmds.setAttr(f'{shape}.overrideColor', color_index)
+
 
 @chunk
 @hold_selection
@@ -197,6 +203,42 @@ def get_shapes_data(transform):
 
     return all_data
 
+
+def mirror_shapes_data(shapes_data):
+    for shape_data in shapes_data:
+        points = shape_data['point'].copy()
+
+        new_points = list()
+        for point in points:
+            new_point = (point[0] * -1, point[1], point[2])
+            new_points.append(new_point)
+
+        shape_data['point'] = new_points
+
+
+
+
+@chunk
+def mirror_shapes_on_selected():
+    selection = cmds.ls(sl=True, type='transform', long=True)
+
+    for transform in selection:
+
+        if '_L' in transform:
+            side, mirror_side = '_L', '_R'
+        elif '_R' in transform:
+            side, mirror_side = '_R', '_L'
+        else:
+            print('Cannot be mirrored')
+            continue
+
+        mirror_transform = transform.replace(side, mirror_side)
+
+        shapes_data = get_shapes_data(mirror_transform)
+        mirror_shapes_data(shapes_data)
+
+        set_shapes_data(mirror_transform, shapes_data)
+
 @chunk
 def get_shapes_data_on_selected():
     selection = cmds.ls(sl=True, type='transform', long=True)
@@ -207,6 +249,7 @@ def get_shapes_data_on_selected():
     transform = selection[0]
     return get_shapes_data(transform)
 
+
 @chunk
 def set_shapes_data_on_selected(shapes_data):
     selection = cmds.ls(sl=True, type='transform', long=True)
@@ -215,6 +258,7 @@ def set_shapes_data_on_selected(shapes_data):
         set_shapes_data(transform, shapes_data)
 
     cmds.select(selection)
+
 
 @chunk
 @hold_selection
@@ -293,6 +337,7 @@ def get_all_ctrls(suffix):
 def select_all_ctrls(suffix):
     cmds.select(get_all_ctrls(suffix))
 
+
 @chunk
 def reset_all_ctrls(suffix):
     ctrls = get_all_ctrls(suffix)
@@ -300,12 +345,14 @@ def reset_all_ctrls(suffix):
     for ctrl in ctrls:
         reset_transform(ctrl)
 
+
 @chunk
 def reset_selected_transforms():
     selection = cmds.ls(sl=True, type='transform')
 
     for transform in selection:
         reset_transform(transform)
+
 
 @chunk
 def reset_transform(transform):
@@ -330,6 +377,7 @@ def reset_transform(transform):
             cmds.setAttr(plug, *default_values)
         except Exception as e:
             cmds.warning(e)
+
 
 @chunk
 def duplicate_mirror_transform(transform):
@@ -360,12 +408,14 @@ def duplicate_mirror_transform(transform):
         trs_new_name = trs.replace(source_side, destination_side)[:-1]
         cmds.rename(trs, trs_new_name)
 
+
 @chunk
 def duplicate_mirror_selected_transforms():
     selection = cmds.ls(sl=True, type='transform')
 
     for transform in selection:
         duplicate_mirror_transform(transform)
+
 
 @chunk
 def select_mirror():
@@ -382,6 +432,7 @@ def select_mirror():
 
     cmds.select(mirror_selection)
 
+
 @chunk
 def add_mirror():
     selection = cmds.ls(sl=True)
@@ -397,6 +448,7 @@ def add_mirror():
 
     cmds.select(mirror_selection, add=True)
 
+
 @chunk
 def mirror_posing(transform):
     # side
@@ -410,6 +462,7 @@ def mirror_posing(transform):
     mirror_matrix = get_mirror_matrix(matrix)
 
     cmds.xform(mirror_transform, matrix=mirror_matrix, worldSpace=True)
+
 
 @chunk
 def mirror_posing_on_selected():

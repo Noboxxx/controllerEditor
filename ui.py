@@ -17,7 +17,7 @@ from .utils import DockableWidget
 from .core import create_controller, set_color_on_selected, get_shapes_data_on_selected, set_shapes_data_on_selected, \
     replace_shapes_on_selected, select_all_ctrls, transform_selected_shapes, select_color, reset_all_ctrls, \
     reset_selected_transforms, duplicate_mirror_selected_transforms, select_mirror, add_mirror, \
-    mirror_posing_on_selected
+    mirror_posing_on_selected, mirror_shapes_on_selected
 
 __folder__ = os.path.dirname(__file__)
 
@@ -324,10 +324,14 @@ class ControllerEditor(DockableWidget):
         replace_btn = QPushButton('replace')
         replace_btn.clicked.connect(replace_shapes_on_selected)
 
+        mirror_btn = QPushButton('mirror')
+        mirror_btn.clicked.connect(mirror_shapes_on_selected)
+
         copy_paste_layout = QHBoxLayout()
         copy_paste_layout.addWidget(replace_btn)
         copy_paste_layout.addWidget(self.copy_btn)
         copy_paste_layout.addWidget(self.paste_btn)
+        copy_paste_layout.addWidget(mirror_btn)
 
         save_shape_btn = QPushButton('save')
         save_shape_btn.clicked.connect(self.save_selected_shapes)
