@@ -168,6 +168,8 @@ def set_color(node, color_index):
             cmds.setAttr(f'{shape}.overrideEnabled', True)
             cmds.setAttr(f'{shape}.overrideColor', color_index)
 
+        cmds.setAttr(f'{shape}.overrideRGBColors', False)
+
 
 @chunk
 @hold_selection
@@ -223,18 +225,21 @@ def mirror_shapes_on_selected():
     selection = cmds.ls(sl=True, type='transform', long=True)
 
     for transform in selection:
+        print('transform', transform)
+        transform_name = transform.split('|')[-1]
 
-        if '_L' in transform:
+        if '_L' in transform_name:
             side, mirror_side = '_L', '_R'
-        elif '_R' in transform:
+        elif '_R' in transform_name:
             side, mirror_side = '_R', '_L'
         else:
             print('Cannot be mirrored')
             continue
 
         mirror_transform = transform.replace(side, mirror_side)
+        print('mirror_transform', mirror_transform)
 
-        shapes_data = get_shapes_data(mirror_transform)
+        shapes_data = get_shapes_data(transform)
         mirror_shapes_data(shapes_data)
 
         set_shapes_data(mirror_transform, shapes_data)
