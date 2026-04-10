@@ -181,11 +181,6 @@ def get_shapes_data(transform):
 
     all_data = list()
     for shape in shapes:
-        # form
-        form = cmds.getAttr(f'{shape}.form')
-        points = cmds.getAttr(f'{shape}.cv[*]')
-        degree = cmds.getAttr(f'{shape}.degree')
-
         # knots
         curve_info = cmds.createNode('curveInfo')
         cmds.connectAttr(f'{shape}.local', f'{curve_info}.inputCurve')
@@ -196,10 +191,15 @@ def get_shapes_data(transform):
 
         # data
         data = dict()
-        data['degree'] = degree
-        data['form'] = form
-        data['point'] = points
+        data['degree'] = cmds.getAttr(f'{shape}.degree')
+        data['form'] = cmds.getAttr(f'{shape}.form')
+        data['point'] = cmds.getAttr(f'{shape}.cv[*]')
         data['knot'] = knots
+
+        data['overrideEnabled'] = cmds.getAttr(f'{shape}.overrideEnabled')
+        data['overrideColor'] = cmds.getAttr(f'{shape}.overrideColor')
+        data['overrideColorRGB'] = cmds.getAttr(f'{shape}.overrideColorRGB')
+        data['overrideRGBColors'] = cmds.getAttr(f'{shape}.overrideRGBColors')
 
         all_data.append(data)
 
@@ -216,8 +216,6 @@ def mirror_shapes_data(shapes_data):
             new_points.append(new_point)
 
         shape_data['point'] = new_points
-
-
 
 
 @chunk
@@ -243,6 +241,7 @@ def mirror_shapes_on_selected():
         mirror_shapes_data(shapes_data)
 
         set_shapes_data(mirror_transform, shapes_data)
+
 
 @chunk
 def get_shapes_data_on_selected():
@@ -287,6 +286,14 @@ def set_shapes_data(ctrl, shapes_data):
             knot=knots,
         )
         new_curves.append(curve)
+
+        # color
+        shape, = cmds.listRelatives(curve, shapes=True, type='nurbsCurve', fullPath=True)
+        cmds.setAttr(f'{shape}.overrideEnabled', shape_data['overrideEnabled'])
+        cmds.setAttr(f'{shape}.overrideColor', shape_data['overrideColor'])
+        cmds.setAttr(f'{shape}.overrideColorRGB', shape_data['overrideColorRGB'])
+        cmds.setAttr(f'{shape}.overrideRGBColors', shape_data['overrideRGBColors'])
+
 
     # remove
     old_shapes = cmds.listRelatives(ctrl, shapes=True, type='nurbsCurve', fullPath=True)
