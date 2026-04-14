@@ -198,7 +198,7 @@ def get_shapes_data(transform):
 
         data['overrideEnabled'] = cmds.getAttr(f'{shape}.overrideEnabled')
         data['overrideColor'] = cmds.getAttr(f'{shape}.overrideColor')
-        data['overrideColorRGB'] = cmds.getAttr(f'{shape}.overrideColorRGB')
+        data['overrideColorRGB'] = cmds.getAttr(f'{shape}.overrideColorRGB')[0]
         data['overrideRGBColors'] = cmds.getAttr(f'{shape}.overrideRGBColors')
 
         all_data.append(data)
@@ -289,23 +289,19 @@ def set_shapes_data(ctrl, shapes_data):
 
         # color
         shape, = cmds.listRelatives(curve, shapes=True, type='nurbsCurve', fullPath=True)
-        cmds.setAttr(f'{shape}.overrideEnabled', shape_data['overrideEnabled'])
-        cmds.setAttr(f'{shape}.overrideColor', shape_data['overrideColor'])
-        cmds.setAttr(f'{shape}.overrideColorRGB', shape_data['overrideColorRGB'])
-        cmds.setAttr(f'{shape}.overrideRGBColors', shape_data['overrideRGBColors'])
+        print(cmds.getAttr(f'{shape}.overrideColorRGB'))
+        print(shape_data.get('overrideColorRGB'))
 
+        cmds.setAttr(f'{shape}.overrideEnabled', shape_data.get('overrideEnabled', False))
+        cmds.setAttr(f'{shape}.overrideColor', shape_data.get('overrideColor', 0))
+        cmds.setAttr(f'{shape}.overrideColorRGB', *shape_data.get('overrideColorRGB', (0, 0, 0)))
+        cmds.setAttr(f'{shape}.overrideRGBColors', shape_data.get('overrideRGBColors', False))
 
     # remove
     old_shapes = cmds.listRelatives(ctrl, shapes=True, type='nurbsCurve', fullPath=True)
     old_colors = list()
     if old_shapes:
         for old_shape in old_shapes:
-            if cmds.getAttr(f'{old_shape}.overrideEnabled'):
-                old_color = cmds.getAttr(f'{old_shape}.overrideColor')
-            else:
-                old_color = None
-            old_colors.append(old_color)
-
             cmds.delete(old_shape)
 
     # replace
