@@ -1,5 +1,4 @@
 from maya import cmds
-from maya.api import OpenMaya
 
 from .utils import chunk, hold_selection, get_mirror_name, get_mirror_matrix
 
@@ -174,10 +173,10 @@ def set_color(node, color_index):
 @chunk
 @hold_selection
 def get_shapes_data(transform):
-    shapes = cmds.listRelatives(transform, shapes=True, type='nurbsCurve', fullPath=True)
+    shapes = cmds.listRelatives(transform, shapes=True, type='nurbsCurve', fullPath=True) or list()
 
-    if not shapes:
-        raise Exception('No shapes found to be saved')
+    # if not shapes:
+    #     raise Exception('No shapes found to be saved')
 
     all_data = list()
     for shape in shapes:
@@ -206,24 +205,31 @@ def get_shapes_data(transform):
     return all_data
 
 
-def mirror_shapes_data(shapes_data):
+def mirror_shapes_data(shapes_data, x_axis: bool = False, y_axis: bool = False, z_axis: bool = False):
     for shape_data in shapes_data:
         points = shape_data['point'].copy()
 
         new_points = list()
         for point in points:
-            new_point = (point[0] * -1, point[1], point[2])
+            new_point = [point[0], point[1], point[2]]
+
+            if x_axis:
+                new_point[0] *= -1
+            if y_axis:
+                new_point[1] *= -1
+            if z_axis:
+                new_point[2] *= -1
+
             new_points.append(new_point)
 
         shape_data['point'] = new_points
 
 
 @chunk
-def mirror_shapes_on_selected():
+def mirror_shapes_on_selected(x_axis: bool = True, y_axis: bool = False, z_axis: bool = False):
     selection = cmds.ls(sl=True, type='transform', long=True)
 
     for transform in selection:
-        print('transform', transform)
         transform_name = transform.split('|')[-1]
 
         if '_L' in transform_name:
@@ -235,10 +241,9 @@ def mirror_shapes_on_selected():
             continue
 
         mirror_transform = transform.replace(side, mirror_side)
-        print('mirror_transform', mirror_transform)
 
         shapes_data = get_shapes_data(transform)
-        mirror_shapes_data(shapes_data)
+        mirror_shapes_data(shapes_data, x_axis=x_axis, y_axis=y_axis, z_axis=z_axis)
 
         set_shapes_data(mirror_transform, shapes_data)
 
@@ -267,9 +272,24 @@ def set_shapes_data_on_selected(shapes_data):
 @chunk
 @hold_selection
 def set_shapes_data(ctrl, shapes_data):
+    default_shape_data = {
+        'overrideEnabled': False,
+        'overrideColor': 0,
+        'overrideColorRGB': (0, 0, 0),
+        'overrideRGBColors': False,
+    }
+
+    # old shapes data
+    old_shapes_data = get_shapes_data(ctrl)
+
     # create
     new_curves = list()
-    for shape_data in shapes_data:
+    for index, shape_data in enumerate(shapes_data):
+        if index < len(old_shapes_data):
+            old_shape_data = old_shapes_data[index]
+        else:
+            old_shape_data = default_shape_data
+
         periodic = shape_data['form'] > 0
         points = shape_data['point'].copy()
         degree = shape_data['degree']
@@ -289,35 +309,30 @@ def set_shapes_data(ctrl, shapes_data):
 
         # color
         shape, = cmds.listRelatives(curve, shapes=True, type='nurbsCurve', fullPath=True)
-        print(cmds.getAttr(f'{shape}.overrideColorRGB'))
-        print(shape_data.get('overrideColorRGB'))
 
-        cmds.setAttr(f'{shape}.overrideEnabled', shape_data.get('overrideEnabled', False))
-        cmds.setAttr(f'{shape}.overrideColor', shape_data.get('overrideColor', 0))
-        cmds.setAttr(f'{shape}.overrideColorRGB', *shape_data.get('overrideColorRGB', (0, 0, 0)))
-        cmds.setAttr(f'{shape}.overrideRGBColors', shape_data.get('overrideRGBColors', False))
+        overrideEnabled = shape_data.get('overrideEnabled', old_shape_data['overrideEnabled'])
+        overrideColor = shape_data.get('overrideColor', old_shape_data['overrideColor'])
+        overrideColorRGB = shape_data.get('overrideColorRGB', old_shape_data['overrideColorRGB'])
+        overrideRGBColors = shape_data.get('overrideRGBColors', old_shape_data['overrideRGBColors'])
+
+        cmds.setAttr(f'{shape}.overrideEnabled', overrideEnabled)
+        cmds.setAttr(f'{shape}.overrideColor', overrideColor)
+        cmds.setAttr(f'{shape}.overrideColorRGB', *overrideColorRGB)
+        cmds.setAttr(f'{shape}.overrideRGBColors', overrideRGBColors)
 
     # remove
     old_shapes = cmds.listRelatives(ctrl, shapes=True, type='nurbsCurve', fullPath=True)
-    old_colors = list()
     if old_shapes:
-        for old_shape in old_shapes:
-            cmds.delete(old_shape)
+        cmds.delete(old_shapes)
 
     # replace
     for index, new_curve in enumerate(new_curves):
         new_shape, = cmds.listRelatives(new_curve, shapes=True, type='nurbsCurve', fullPath=True)
 
         ctrl_name = ctrl.split('|')[-1]
-        new_shape_name = f'{ctrl_name}Shape'
-        if index > 0:
-            new_shape_name = f'{new_shape_name}{index}'
 
+        new_shape_name = f'{ctrl_name}Shape{index + 1}'
         new_shape = cmds.rename(new_shape, new_shape_name)
-
-        if index < len(old_colors):
-            old_color = old_colors[index]
-            set_color(new_shape, old_color)
 
         cmds.parent(new_shape, ctrl, relative=True, shape=True)
 

@@ -324,14 +324,33 @@ class ControllerEditor(DockableWidget):
         replace_btn = QPushButton('replace')
         replace_btn.clicked.connect(replace_shapes_on_selected)
 
+        # mirror
+        self.x_axis_checkbox = QCheckBox('x')
+        self.x_axis_checkbox.setChecked(True)
+
+        self.y_axis_checkbox = QCheckBox('y')
+        self.z_axis_checkbox = QCheckBox('z')
+
         mirror_btn = QPushButton('mirror')
-        mirror_btn.clicked.connect(mirror_shapes_on_selected)
+        def mirror_func():
+            mirror_shapes_on_selected(
+                x_axis=self.x_axis_checkbox.isChecked(),
+                y_axis=self.y_axis_checkbox.isChecked(),
+                z_axis=self.z_axis_checkbox.isChecked(),
+            )
+        mirror_btn.clicked.connect(mirror_func)
 
         copy_paste_layout = QHBoxLayout()
         copy_paste_layout.addWidget(replace_btn)
         copy_paste_layout.addWidget(self.copy_btn)
         copy_paste_layout.addWidget(self.paste_btn)
-        copy_paste_layout.addWidget(mirror_btn)
+
+        mirror_layout = QHBoxLayout()
+        mirror_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        mirror_layout.addWidget(mirror_btn)
+        mirror_layout.addWidget(self.x_axis_checkbox)
+        mirror_layout.addWidget(self.y_axis_checkbox)
+        mirror_layout.addWidget(self.z_axis_checkbox)
 
         save_shape_btn = QPushButton('save')
         save_shape_btn.clicked.connect(self.save_selected_shapes)
@@ -352,6 +371,8 @@ class ControllerEditor(DockableWidget):
         shape_layout.addLayout(transform_layout)
         shape_layout.addWidget(QLabel('Copy'))
         shape_layout.addLayout(copy_paste_layout)
+        shape_layout.addWidget(QLabel('Mirror'))
+        shape_layout.addLayout(mirror_layout)
         shape_layout.addWidget(QLabel('Replace'))
         shape_layout.addLayout(shape_save_layout)
         shape_layout.addLayout(self.shapes_layout)
