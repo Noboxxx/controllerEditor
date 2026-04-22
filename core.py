@@ -172,11 +172,8 @@ def set_color(node, color_index):
 
 @chunk
 @hold_selection
-def get_shapes_data(transform):
+def get_shapes_data(transform: str, with_color: bool = True, with_shape: bool = True):
     shapes = cmds.listRelatives(transform, shapes=True, type='nurbsCurve', fullPath=True) or list()
-
-    # if not shapes:
-    #     raise Exception('No shapes found to be saved')
 
     all_data = list()
     for shape in shapes:
@@ -190,15 +187,17 @@ def get_shapes_data(transform):
 
         # data
         data = dict()
-        data['degree'] = cmds.getAttr(f'{shape}.degree')
-        data['form'] = cmds.getAttr(f'{shape}.form')
-        data['point'] = cmds.getAttr(f'{shape}.cv[*]')
-        data['knot'] = knots
+        if with_shape:
+            data['degree'] = cmds.getAttr(f'{shape}.degree')
+            data['form'] = cmds.getAttr(f'{shape}.form')
+            data['point'] = cmds.getAttr(f'{shape}.cv[*]')
+            data['knot'] = knots
 
-        data['overrideEnabled'] = cmds.getAttr(f'{shape}.overrideEnabled')
-        data['overrideColor'] = cmds.getAttr(f'{shape}.overrideColor')
-        data['overrideColorRGB'] = cmds.getAttr(f'{shape}.overrideColorRGB')[0]
-        data['overrideRGBColors'] = cmds.getAttr(f'{shape}.overrideRGBColors')
+        if with_color:
+            data['overrideEnabled'] = cmds.getAttr(f'{shape}.overrideEnabled')
+            data['overrideColor'] = cmds.getAttr(f'{shape}.overrideColor')
+            data['overrideColorRGB'] = cmds.getAttr(f'{shape}.overrideColorRGB')[0]
+            data['overrideRGBColors'] = cmds.getAttr(f'{shape}.overrideRGBColors')
 
         all_data.append(data)
 
@@ -242,7 +241,7 @@ def mirror_shapes_on_selected(x_axis: bool = True, y_axis: bool = False, z_axis:
 
         mirror_transform = transform.replace(side, mirror_side)
 
-        shapes_data = get_shapes_data(transform)
+        shapes_data = get_shapes_data(transform, with_color=False)
         mirror_shapes_data(shapes_data, x_axis=x_axis, y_axis=y_axis, z_axis=z_axis)
 
         set_shapes_data(mirror_transform, shapes_data)
