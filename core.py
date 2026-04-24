@@ -1,3 +1,6 @@
+import json
+from typing import Sequence
+
 from maya import cmds
 
 from .utils import chunk, hold_selection, get_mirror_name, get_mirror_matrix
@@ -492,3 +495,32 @@ def mirror_posing_on_selected():
 
     for transform in selection:
         mirror_posing(transform)
+
+
+@chunk
+def import_shapes(file_path: str, selection: Sequence[str] | None = None):
+    if selection is None:
+        selection = cmds.ls(sl=True)
+
+    with open(file_path, 'r') as f:
+        data = json.load(f)
+
+    for node, shapes_data in data.items():
+        if node not in selection:
+            continue
+
+        set_shapes_data(node, shapes_data)
+
+
+@chunk
+def export_shapes(file_path: str, selection: Sequence[str] | None = None):
+    if selection is None:
+        selection = cmds.ls(sl=True)
+
+    data = dict()
+    for node in selection:
+        shapes_data = get_shapes_data(node)
+        data[node] = shapes_data
+
+    with open(file_path, 'w') as f:
+        json.dump(data, f, indent=4)

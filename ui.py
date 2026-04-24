@@ -13,29 +13,45 @@ except:
 
 from maya import cmds
 
-from .utils import DockableWidget
-from .core import create_controller, set_color_on_selected, get_shapes_data_on_selected, set_shapes_data_on_selected, \
-    replace_shapes_on_selected, select_all_ctrls, transform_selected_shapes, select_color, reset_all_ctrls, \
-    reset_selected_transforms, duplicate_mirror_selected_transforms, select_mirror, add_mirror, \
-    mirror_posing_on_selected, mirror_shapes_on_selected
+from .utils import DockableWidget, get_maya_main_window
+from .core import (
+    create_controller,
+    set_color_on_selected,
+    get_shapes_data_on_selected,
+    set_shapes_data_on_selected,
+    replace_shapes_on_selected,
+    select_all_ctrls,
+    transform_selected_shapes,
+    select_color,
+    reset_all_ctrls,
+    reset_selected_transforms,
+    duplicate_mirror_selected_transforms,
+    select_mirror,
+    add_mirror,
+    mirror_posing_on_selected,
+    mirror_shapes_on_selected,
+    import_shapes,
+    export_shapes
+)
 
 __folder__ = os.path.dirname(__file__)
 
-class ShapeButton(QPushButton):
 
-    def __init__(self, name, shapes_data):
-        super().__init__()
-
-        self.name = name
-        self.shapes_data = shapes_data
-
-        set_shapes_on_selected_func = lambda x: set_shapes_data_on_selected(self.shapes_data)
-        self.clicked.connect(set_shapes_on_selected_func)
-
-        self.reload()
-
-    def reload(self):
-        self.setText(self.name)
+# class ShapeButton(QPushButton):
+# 
+#     def __init__(self, name, shapes_data):
+#         super().__init__()
+# 
+#         self.name = name
+#         self.shapes_data = shapes_data
+# 
+#         set_shapes_on_selected_func = lambda x: set_shapes_data_on_selected(self.shapes_data)
+#         self.clicked.connect(set_shapes_on_selected_func)
+# 
+#         self.reload()
+# 
+#     def reload(self):
+#         self.setText(self.name)
 
 
 class ColorButton(QPushButton):
@@ -77,7 +93,6 @@ class ColorButton(QPushButton):
 
 
 class NameLine(QLineEdit):
-
 
     def contextMenuEvent(self, event):
         paste_selected_action = QAction('Paste Selected', self)
@@ -234,8 +249,10 @@ class ControllerEditor(DockableWidget):
 
         select_all_ctrls_btn = QPushButton('Select All Ctrls')
         select_all_ctrls_btn.setIcon(QIcon(':aselect.png'))
+
         def select_all_ctrls_func():
             select_all_ctrls(self.ctrl_suffix)
+
         select_all_ctrls_btn.clicked.connect(select_all_ctrls_func)
 
         select_mirror_btn = QPushButton('Select Mirror')
@@ -248,8 +265,10 @@ class ControllerEditor(DockableWidget):
 
         reset_all_ctrls_btn = QPushButton('Reset All Ctrls')
         reset_all_ctrls_btn.setIcon(QIcon(':clockwise.png'))
+
         def reset_all_ctrls_func():
             reset_all_ctrls(self.ctrl_suffix)
+
         reset_all_ctrls_btn.clicked.connect(reset_all_ctrls_func)
 
         reset_selected_btn = QPushButton('Reset Selected')
@@ -289,6 +308,7 @@ class ControllerEditor(DockableWidget):
         # shape
         def copy_func():
             self.copied_shapes = get_shapes_data_on_selected()
+
         self.copy_btn = QPushButton('copy')
         self.copy_btn.clicked.connect(copy_func)
 
@@ -296,6 +316,7 @@ class ControllerEditor(DockableWidget):
             if not self.copied_shapes:
                 raise Exception('Nothing found to be pasted.')
             set_shapes_data_on_selected(self.copied_shapes)
+
         self.paste_btn = QPushButton('paste')
         self.paste_btn.clicked.connect(past_func)
 
@@ -332,12 +353,14 @@ class ControllerEditor(DockableWidget):
         self.z_axis_checkbox = QCheckBox('z')
 
         mirror_btn = QPushButton('mirror')
+
         def mirror_func():
             mirror_shapes_on_selected(
                 x_axis=self.x_axis_checkbox.isChecked(),
                 y_axis=self.y_axis_checkbox.isChecked(),
                 z_axis=self.z_axis_checkbox.isChecked(),
             )
+
         mirror_btn.clicked.connect(mirror_func)
 
         copy_paste_layout = QHBoxLayout()
@@ -346,8 +369,7 @@ class ControllerEditor(DockableWidget):
         copy_paste_layout.addWidget(self.paste_btn)
 
         mirror_layout = QHBoxLayout()
-        mirror_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        mirror_layout.addWidget(mirror_btn)
+        mirror_layout.addWidget(mirror_btn, 1)
         mirror_layout.addWidget(self.x_axis_checkbox)
         mirror_layout.addWidget(self.y_axis_checkbox)
         mirror_layout.addWidget(self.z_axis_checkbox)
@@ -363,10 +385,63 @@ class ControllerEditor(DockableWidget):
         shape_save_layout.addWidget(self.shape_name_line)
         shape_save_layout.addWidget(save_shape_btn)
 
-        self.shapes_layout = QGridLayout()
+        # self.shapes_layout = QGridLayout()
+
+        def apply_func():
+            shapes_data = self.shapes_combo.currentData()
+            set_shapes_data_on_selected(shapes_data)
+
+        self.shapes_combo = QComboBox()
+
+        apply_btn = QPushButton('apply')
+        apply_btn.clicked.connect(apply_func)
+
+        shapes_layout = QHBoxLayout()
+        shapes_layout.addWidget(self.shapes_combo, 1)
+        shapes_layout.addWidget(apply_btn)
+
+        def import_on_selected():
+            mayaWindow = get_maya_main_window()
+            filePath, flt = QFileDialog.getOpenFileName(
+                mayaWindow,
+                caption='Import Shapes',
+                filter='Json File (*.json)'
+            )
+
+            if not filePath:
+                print('Operation canceled')
+                return
+
+            import_shapes(filePath)
+
+        def export_on_selected():
+            mayaWindow = get_maya_main_window()
+            filePath, flt = QFileDialog.getSaveFileName(
+                mayaWindow,
+                caption='Export Shapes',
+                filter='Json File (*.json)'
+            )
+
+            if not filePath:
+                print('Operation canceled')
+                return
+
+            export_shapes(filePath)
+
+        import_btn = QPushButton('Import')
+        import_btn.clicked.connect(import_on_selected)
+
+        export_btn = QPushButton('Export')
+        export_btn.clicked.connect(export_on_selected)
+
+        import_layout = QHBoxLayout()
+        import_layout.addWidget(import_btn)
+        import_layout.addWidget(export_btn)
 
         shape_layout = QVBoxLayout()
         shape_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        shape_layout.addWidget(QLabel('Import / Export'))
+        shape_layout.addLayout(import_layout)
         shape_layout.addWidget(QLabel('Transform'))
         shape_layout.addLayout(transform_layout)
         shape_layout.addWidget(QLabel('Copy'))
@@ -374,14 +449,15 @@ class ControllerEditor(DockableWidget):
         shape_layout.addWidget(QLabel('Mirror'))
         shape_layout.addLayout(mirror_layout)
         shape_layout.addWidget(QLabel('Replace'))
+        shape_layout.addLayout(shapes_layout)
         shape_layout.addLayout(shape_save_layout)
-        shape_layout.addLayout(self.shapes_layout)
+        # shape_layout.addLayout(self.shapes_layout)
 
         # tabs
         tabs = {
             'ctrl': ctrl_layout,
+            'shape': shape_layout,
             'color': color_layout,
-            'shape': shape_layout
         }
 
         tab = QTabWidget()
@@ -407,30 +483,34 @@ class ControllerEditor(DockableWidget):
     def reload_shapes_tab(self):
         shapes_data = self.get_shapes_data_from_file()
 
-        escape_count = 0
-        while self.shapes_layout.count():
-            if escape_count > 500:
-                cmds.warning('Escape happened')
-                break
+        self.shapes_combo.clear()
+        for name, data in shapes_data.items():
+            self.shapes_combo.addItem(name, userData=data)
 
-            item = self.shapes_layout.takeAt(0)
+        # escape_count = 0
+        # while self.shapes_layout.count():
+        #     if escape_count > 500:
+        #         cmds.warning('Escape happened')
+        #         break
+        # 
+        #     item = self.shapes_layout.takeAt(0)
+        # 
+        #     widget = item.widget()
+        #     widget.deleteLater()
+        # 
+        #     escape_count += 1
 
-            widget = item.widget()
-            widget.deleteLater()
-
-            escape_count += 1
-
-        column = 0
-        row = 0
-        for index, (name, data) in enumerate(shapes_data.items()):
-            if index % 3 == 0:
-                row += 1
-                column = 0
-            else:
-                column += 1
-
-            shape_button = ShapeButton(name, data)
-            self.shapes_layout.addWidget(shape_button, row, column)
+        # column = 0
+        # row = 0
+        # for index, (name, data) in enumerate(shapes_data.items()):
+        #     if index % 3 == 0:
+        #         row += 1
+        #         column = 0
+        #     else:
+        #         column += 1
+        #
+        #     shape_button = ShapeButton(name, data)
+        #     self.shapes_layout.addWidget(shape_button, row, column)
 
     def get_shapes_data_from_file(self):
         if not os.path.isfile(self.shapes_file):
