@@ -5,6 +5,7 @@ TODO:
 - rotate shape value
 - find nice shapes online
 - rbg color (with own saved color and list used colors in scene)
+- select ctrl by assigned colors
 - restore connections on shapes
 - add preview icon on to the list of shapes
 - set mirror pair '_L', '_R'
