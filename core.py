@@ -333,7 +333,10 @@ def set_shapes_data(ctrl, shapes_data):
 
         ctrl_name = ctrl.split('|')[-1]
 
-        new_shape_name = f'{ctrl_name}Shape{index + 1}'
+        new_shape_name = f'{ctrl_name}Shape'
+        if index != 0:
+            new_shape_name += str(index)
+
         new_shape = cmds.rename(new_shape, new_shape_name)
 
         cmds.parent(new_shape, ctrl, relative=True, shape=True)
