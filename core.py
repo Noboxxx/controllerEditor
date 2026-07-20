@@ -251,14 +251,14 @@ def mirror_shapes_on_selected(x_axis: bool = True, y_axis: bool = False, z_axis:
 
 
 @chunk
-def get_shapes_data_on_selected():
+def get_shapes_data_on_selected(with_color=False):
     selection = cmds.ls(sl=True, type='transform', long=True)
 
     if not selection:
         raise Exception('No transform selected')
 
     transform = selection[0]
-    return get_shapes_data(transform)
+    return get_shapes_data(transform, with_color=with_color)
 
 
 @chunk

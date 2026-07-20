@@ -1,4 +1,5 @@
 import json
+import os
 
 try:
     from PySide2.QtCore import *
@@ -532,7 +533,7 @@ class ControllerEditor(DockableWidget):
 
     def save_selected_shapes(self):
         shape_name = self.shape_name_line.text() or self.shape_name_line.placeholderText()
-        data = get_shapes_data_on_selected()
+        data = get_shapes_data_on_selected(with_color=False)
 
         self.save_shapes_data_in_file(shape_name, data)
 
